@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f8fa">
+  <title>Preventivo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <h1>Preventivo</h1>
+    </header>
+
+    <section class="content" aria-label="Datos del preventivo">
+      <div class="field-group">
+        <label for="piece">Pieza</label>
+        <button id="pieceButton" class="field-button" type="button" aria-haspopup="dialog" aria-expanded="false">
+          <span id="pieceValue">Fusor</span>
+          <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <select id="piece" class="visually-hidden" tabindex="-1" aria-hidden="true">
+          <option value="FUSOR">Fusor</option>
+          <option value="RODILLOS">Rodillos</option>
+          <option value="BANDA DE TRANSFERENCIA">Banda de transferencia</option>
+          <option value="UNIDAD DE IMAGEN">Unidad de imagen</option>
+          <option value="ALIMENTADOR">Alimentador</option>
+          <option value="CRISTAL">Cristal</option>
+          <option value="INTERIOR DEL EQUIPO">Interior del equipo</option>
+          <option value="OTRO">Otro</option>
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label for="serial">Número de serie</label>
+        <div class="input-wrap">
+          <input id="serial" type="text" inputmode="text" autocomplete="off" placeholder="Escribe el número de serie" maxlength="60">
+          <button id="clearSerial" class="icon-button hidden" type="button" aria-label="Borrar número de serie">×</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="cameraCard" class="camera-card hidden" aria-label="Cámara">
+      <video id="cameraPreview" autoplay playsinline></video>
+      <div class="camera-topbar">
+        <button id="closeCamera" class="round-icon-button" type="button" aria-label="Cerrar cámara">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg>
+        </button>
+      </div>
+      <div class="camera-controls">
+        <button id="captureButton" class="capture" type="button" aria-label="Tomar foto"><span></span></button>
+      </div>
+    </section>
+
+    <section id="previewBox" class="preview-box hidden" aria-label="Vista previa">
+      <div class="preview-header">
+        <strong>Foto lista</strong>
+      </div>
+      <img id="preview" alt="Vista previa de la foto">
+      <div class="preview-actions">
+        <button id="retakeButton" class="secondary" type="button">Tomar otra</button>
+        <button id="download" class="primary" type="button">Guardar foto</button>
+      </div>
+    </section>
+
+    <p id="status" class="status hidden" aria-live="polite">
+      <span id="statusIcon" class="status-icon" aria-hidden="true"></span>
+      <span id="statusText"></span>
+    </p>
+
+    <div id="bottomAction" class="bottom-action">
+      <button id="openCamera" class="primary main-action" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Zm8 3.25A3.75 3.75 0 1 0 12 17.75 3.75 3.75 0 0 0 12 10.25Z"/></svg>
+        <span>Tomar foto</span>
+      </button>
+    </div>
+
+    <div id="pieceSheet" class="sheet-backdrop hidden" aria-hidden="true">
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+        <div class="sheet-handle"></div>
+        <h2 id="sheetTitle">Seleccionar pieza</h2>
+        <div id="pieceOptions" class="sheet-options"></div>
+      </div>
+    </div>
+
+    <canvas id="canvas" hidden></canvas>
+    <input id="cameraFallback" type="file" accept="image/*" capture="environment" hidden>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
