@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Caffenio Ops | Tablero Central de Mantenimiento</title>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      background-color: #F8FAFC;
+      color: #0F172A;
+      overflow-x: hidden;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      height: 7px;
+      width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #E2E8F0;
+      border-radius: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #94A3B8;
+      border-radius: 4px;
+    }
+    .kanban-col {
+      min-width: 310px;
+      max-width: 310px;
+      height: calc(100vh - 165px);
+    }
+    .card-drag {
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .card-drag:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+    }
+    .card-drag.dragging {
+      opacity: 0.35;
+      transform: scale(0.96);
+    }
+    .col-dropzone.drag-over {
+      background-color: #EFF6FF !important;
+      border: 2px dashed #3B82F6 !important;
+    }
+  </style>
+</head>
+<body class="h-screen flex flex-col font-sans select-none">
+
+  <!-- TOP HEADER -->
+  <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shadow-xs z-20">
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#3B2219] to-[#E85D04] flex items-center justify-center text-white shadow-md shadow-orange-950/20">
+          <i data-lucide="coffee" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-extrabold text-base tracking-tight text-slate-900">CAFFENIO OPS</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-[#E85D04] tracking-wide border border-orange-200">
+              MANTENIMIENTO & TALLER
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 font-medium">Control Central de Tickets • Hermosillo, Son.</p>
+        </div>
+      </div>
+
+      <div class="h-6 w-px bg-slate-200 mx-2 hidden sm:block"></div>
+
+      <!-- Quick Operational Metrics -->
+      <div class="hidden lg:flex items-center gap-4 text-xs">
+        <div class="flex items-center gap-2 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-lg">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="text-slate-600 font-medium">Pendientes:</span>
+          <span class="font-bold text-slate-900" id="totalActiveCount">7</span>
+        </div>
+        <div class="flex items-center gap-2 bg-rose-50 border border-rose-200/70 px-3 py-1.5 rounded-lg text-rose-700">
+          <i data-lucide="alert-octagon" class="w-3.5 h-3.5 text-rose-600"></i>
+          <span class="font-medium">Paro de Barra (Críticos):</span>
+          <span class="font-bold" id="totalCriticalCount">2</span>
+        </div>
+        <div class="flex items-center gap-2 bg-amber-50 border border-amber-200/70 px-3 py-1.5 rounded-lg text-amber-800">
+          <i data-lucide="package" class="w-3.5 h-3.5 text-amber-600"></i>
+          <span class="font-medium">Esperando Pieza:</span>
+          <span class="font-bold" id="totalPartsWaiting">2</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex items-center gap-3">
+      <div class="relative">
+        <input 
+          type="text" 
+          id="searchInput"
+          placeholder="Buscar por tienda, folio o falla..." 
+          class="pl-9 pr-4 py-1.5 text-xs bg-slate-100 border border-slate-200 rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all text-slate-800 placeholder-slate-400 font-medium"
+          oninput="handleSearch(this.value)"
+        >
+        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-2.5 top-2"></i>
+      </div>
+
+      <button onclick="openPlanModal()" class="flex items-center gap-2 px-3 py-1.5 bg-[#3B2219] hover:bg-[#2B1811] text-white text-xs font-semibold rounded-lg shadow-sm transition-all active:scale-95">
+        <i data-lucide="route" class="w-3.5 h-3.5 text-orange-400"></i>
+        <span>Ruta Hermosillo</span>
+      </button>
+
+      <div class="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+        <div class="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs" title="Supervisión Operativa">
+          JH
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- FILTER BAR -->
+  <div class="bg-white border-b border-slate-200 px-6 py-2 flex flex-wrap items-center justify-between gap-3 text-xs">
+    <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+      <span class="text-slate-400 font-semibold uppercase text-[10px] tracking-wider mr-1">Filtrar por giro:</span>
+      <button onclick="filterCategory('ALL')" id="filter-btn-ALL" class="px-2.5 py-1 rounded-md font-semibold bg-slate-900 text-white shadow-xs transition-all">
+        Todos (7)
+      </button>
+      <button onclick="filterCategory('MAQUINA_CAFE')" id="filter-btn-MAQUINA_CAFE" class="px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-slate-100 transition-all flex items-center gap-1.5">
+        <i data-lucide="coffee" class="w-3.5 h-3.5 text-amber-700"></i>
+        <span>Máquinas de Café & Molinos</span>
+      </button>
+      <button onclick="filterCategory('REFRIGERACION')" id="filter-btn-REFRIGERACION" class="px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-slate-100 transition-all flex items-center gap-1.5">
+        <i data-lucide="snowflake" class="w-3.5 h-3.5 text-sky-600"></i>
+        <span>Hielo & Vitrinas</span>
+      </button>
+      <button onclick="filterCategory('PLOMERIA')" id="filter-btn-PLOMERIA" class="px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-slate-100 transition-all flex items-center gap-1.5">
+        <i data-lucide="droplet" class="w-3.5 h-3.5 text-blue-600"></i>
+        <span>Plomería & Ósmosis</span>
+      </button>
+      <button onclick="filterCategory('ELECTRICIDAD')" id="filter-btn-ELECTRICIDAD" class="px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-slate-100 transition-all flex items-center gap-1.5">
+        <i data-lucide="zap" class="w-3.5 h-3.5 text-yellow-500"></i>
+        <span>Luz & Auto-Servicio</span>
+      </button>
+    </div>
+
+    <div class="flex items-center gap-3 text-slate-500 text-[11px]">
+      <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Alta / Paro de Barra</span>
+      <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Media / Operación Lenta</span>
+      <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Normal / Preventivo</span>
+    </div>
+  </div>
+
+  <!-- KANBAN BOARD CON LAS 6 COLUMNAS REALES -->
+  <main class="flex-1 overflow-x-auto p-6 custom-scroll">
+    <div class="flex gap-4 items-start h-full">
+
+      <!-- COL 1: PENDIENTES DE VISITA (Sustituye a 'Sucursal') -->
+      <div class="kanban-col flex flex-col bg-slate-100/90 rounded-2xl border border-slate-200/90 shadow-2xs">
+        <div class="p-3.5 border-b border-slate-200 bg-white/70 rounded-t-2xl flex items-center justify-between backdrop-blur-xs">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+            <div>
+              <h3 class="text-xs font-bold text-slate-800 tracking-wide">Pendientes de Visita</h3>
+              <p class="text-[10px] text-slate-400 font-medium">Recién levantados / Sin revisar</p>
+            </div>
+          </div>
+          <span id="badge-COL_PENDIENTES" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-700 font-mono">1</span>
+        </div>
+        <div id="COL_PENDIENTES" class="col-dropzone flex-1 p-3 overflow-y-auto space-y-3 custom-scroll" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'COL_PENDIENTES')">
+        </div>
+      </div>
+
+      <!-- COL 2: ESPERANDO REFACCIÓN (Solo los que realmente están bloqueados por pieza) -->
+      <div class="kanban-col flex flex-col bg-amber-50/50 rounded-2xl border border-amber-200/90 shadow-2xs">
+        <div class="p-3.5 border-b border-amber-200/90 bg-white/70 rounded-t-2xl flex items-center justify-between backdrop-blur-xs">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+            <div>
+              <h3 class="text-xs font-bold text-amber-950 tracking-wide">Esperando Refacción</h3>
+              <p class="text-[10px] text-amber-700/80 font-medium">Atorados por material</p>
+            </div>
+          </div>
+          <span id="badge-COL_REFACCIONES" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-200 text-amber-900 font-mono">2</span>
+        </div>
+        <div id="COL_REFACCIONES" class="col-dropzone flex-1 p-3 overflow-y-auto space-y-3 custom-scroll" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'COL_REFACCIONES')">
+        </div>
+      </div>
+
+      <!-- COL 3: MANTENIMIENTOS PREVENTIVOS (Rutinarios, Pólizas, Limpieza profunda) -->
+      <div class="kanban-col flex flex-col bg-sky-50/50 rounded-2xl border border-sky-200/90 shadow-2xs">
+        <div class="p-3.5 border-b border-sky-200/90 bg-white/70 rounded-t-2xl flex items-center justify-between backdrop-blur-xs">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
+            <div>
+              <h3 class="text-xs font-bold text-sky-950 tracking-wide">Preventivos & Rutina</h3>
+              <p class="text-[10px] text-sky-700/80 font-medium">Ósmosis, filtros, descalcificar</p>
+            </div>
+          </div>
+          <span id="badge-COL_PREVENTIVOS" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-sky-200 text-sky-900 font-mono">1</span>
+        </div>
+        <div id="COL_PREVENTIVOS" class="col-dropzone flex-1 p-3 overflow-y-auto space-y-3 custom-scroll" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'COL_PREVENTIVOS')">
+        </div>
+      </div>
+
+      <!-- COL 4: EN REPARACIÓN ACTIVA (Técnico metiendo mano) -->
+      <div class="kanban-col flex flex-col bg-orange-50/50 rounded-2xl border border-orange-200/90 shadow-2xs">
+        <div class="p-3.5 border-b border-orange-200/90 bg-white/70 rounded-t-2xl flex items-center justify-between backdrop-blur-xs">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+            <div>
+              <h3 class="text-xs font-bold text-orange-950 tracking-wide">Reparación Activa</h3>
+              <p class="text-[10px] text-orange-700/80 font-medium">Técnico trabajando en sitio</p>
+            </div>
+          </div>
+          <span id="badge-COL_REPARACION" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-orange-200 text-orange-900 font-mono">2</span>
+        </div>
+        <div id="COL_REPARACION" class="col-dropzone flex-1 p-3 overflow-y-auto space-y-3 custom-scroll" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'COL_REPARACION')">
+        </div>
+      </div>
+
+      <!-- COL 5: PRUEBAS DE CALIDAD & BEBIDA -->
+      <div class="kanban-col flex flex-col bg-purple-50/50 rounded-2xl border border-purple-200/90 shadow-2xs">
+        <div class="p-3.5 border-b border-purple-200/90 bg-white/70 rounded-t-2xl flex items-center justify-between backdrop-blur-xs">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+            <div>
+              <h3 class="text-xs font-bold text-purple-950 tracking-wide">Pruebas & Calibración</h3>
+              <p class="text-[10px] text-purple-700/80 font-medium">Extracción, shots, temperatura</p>
+            </div>
+          </div>
+          <span id="badge-COL_PRUEBAS" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-purple-200 text-purple-900 font-mono">1</span>
+        </div>
+        <div id="COL_PRUEBAS" class="col-dropzone flex-1 p-3 overflow-y-auto space-y-3 custom-scroll" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'COL_PRUEBAS')">
+        </div>
+      </div>
+
+      <!-- COL 6: RESUELTO / TIENDA OPERANDO -->
+      <div class="kanban-col flex flex-col bg-emerald-50/50 rounded-2xl border border-emerald-200/90 shadow-2xs">
+        <div class="p-3.5 border-b border-emerald-200/90 bg-white/70 rounded-t-2xl flex items-center justify-between backdrop-blur-xs">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+            <div>
+              <h3 class="text-xs font-bold text-emerald-950 tracking-wide">Resuelto / Operando</h3>
+              <p class="text-[10px] text-emerald-700/80 font-medium">Equipo listo y entregado</p>
+            </div>
+          </div>
+          <span id="badge-COL_CONCLUIDO" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-200 text-emerald-900 font-mono">0</span>
+        </div>
+        <div id="COL_CONCLUIDO" class="col-dropzone flex-1 p-3 overflow-y-auto space-y-3 custom-scroll" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'COL_CONCLUIDO')">
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- MODAL DE DETALLE DE TICKET -->
+  <div id="detailModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span id="modalFolioBadge" class="font-mono text-xs font-bold px-2.5 py-1 bg-slate-900 text-white rounded-md">#CF-9021</span>
+          <div>
+            <h2 id="modalSucursalTitle" class="text-base font-bold text-slate-900 leading-tight">Caffenio Blvd. Morelos</h2>
+            <p id="modalCategorySub" class="text-xs text-slate-500">Espresso La Marzocco • Zona Norte</p>
+          </div>
+        </div>
+        <button onclick="closeModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 flex items-center justify-center transition-colors">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 space-y-5 overflow-y-auto custom-scroll flex-1">
+        
+        <!-- Status & Priority Banner -->
+        <div class="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200/80 text-xs">
+          <div class="flex items-center gap-2">
+            <span class="text-slate-500 font-medium">Estado actual:</span>
+            <span id="modalStageBadge" class="font-bold text-orange-600 bg-orange-100 px-2 py-0.5 rounded-md">Reparación Activa</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-slate-500 font-medium">Impacto:</span>
+            <span id="modalPriorityBadge" class="font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-md flex items-center gap-1">
+              <i data-lucide="alert-triangle" class="w-3 h-3"></i> Paro de Barra
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-slate-500 font-medium">Técnico:</span>
+            <span id="modalTechBadge" class="font-semibold text-slate-800">Carlos Morales</span>
+          </div>
+        </div>
+
+        <!-- Problem Details -->
+        <div>
+          <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Descripción del Problema</label>
+          <div id="modalDesc" class="p-3.5 bg-slate-50 rounded-xl text-slate-800 text-sm border border-slate-200/70 leading-relaxed font-normal">
+            --
+          </div>
+        </div>
+
+        <!-- Refacciones y Piezas (Si aplica) -->
+        <div id="modalRefSection">
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Refacciones / Piezas</label>
+            <span id="modalRefStatus" class="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">Estatus</span>
+          </div>
+          <div id="modalRefList" class="space-y-2">
+          </div>
+        </div>
+
+        <!-- Bitácora de Acciones -->
+        <div>
+          <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Seguimiento Operativo</label>
+          <div id="modalTimeline" class="border border-slate-200 rounded-xl divide-y divide-slate-100 text-xs">
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+        <div class="text-xs text-slate-500 flex items-center gap-1.5">
+          <i data-lucide="clock" class="w-4 h-4 text-slate-400"></i>
+          <span>Tiempo transcurrido: <strong id="modalTimeCount">3.5 hrs</strong></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="closeModal()" class="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg transition-colors">
+            Cerrar Ficha
+          </button>
+          <button onclick="markAsResolvedFromModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all flex items-center gap-1.5">
+            <i data-lucide="check" class="w-3.5 h-3.5"></i>
+            <span>Completar y Cerrar Folio</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL RUTA HERMOSILLO -->
+  <div id="planModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+      <div class="px-6 py-4 border-b border-slate-200 bg-[#3B2219] text-white flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center text-white">
+            <i data-lucide="route" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold leading-tight">Optimización de Rutas • Hermosillo</h3>
+            <p class="text-xs text-orange-200">Coordinación por cuadrantes para erradicar vueltas en falso</p>
+          </div>
+        </div>
+        <button onclick="closePlanModal()" class="text-orange-200 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 text-xs overflow-y-auto max-h-[70vh]">
+        <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-amber-900">
+          <i data-lucide="info" class="w-4 h-4 text-amber-600 mt-0.5 shrink-0"></i>
+          <span>El sistema distingue qué folios requieren herramienta simple o preventivo (se atienden de inmediato) vs los que están esperando piezas en Almacén Central.</span>
+        </div>
+
+        <div class="space-y-3">
+          <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-bold text-slate-900 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-orange-500"></span> Zona Norte (Morelos / Progreso)
+              </span>
+              <span class="px-2 py-0.5 bg-orange-100 text-orange-800 rounded font-semibold text-[10px]">2 Servicios en Curso</span>
+            </div>
+            <p class="text-slate-600 mb-1">• <strong>Caffenio Blvd. Morelos</strong> (Espresso - Reparación activa de válvula)</p>
+            <p class="text-slate-600">• <strong>Caffenio Progreso</strong> (Plomería tarja - Ajuste mecánico sin pieza)</p>
+          </div>
+
+          <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-bold text-slate-900 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-blue-500"></span> Zona Poniente & Centro (Quiroga / Unison / Colosio)
+              </span>
+              <span class="px-2 py-0.5 bg-blue-100 text-blue-800 rounded font-semibold text-[10px]">1 Preventivo + 1 Bloqueado</span>
+            </div>
+            <p class="text-slate-600 mb-1">• <strong>Caffenio Quiroga</strong> (Ósmosis - Cambio rutinario de cartuchos)</p>
+            <p class="text-slate-600">• <strong>Caffenio Unison</strong> (Hielo - Atorado esperando sensor)</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-6 py-3 border-t border-slate-200 bg-slate-50 flex justify-end">
+        <button onclick="closePlanModal()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg">
+          Entendido
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATA & LOGIC -->
+  <script>
+    // DATOS ESTRUCTURADOS CON LA LÓGICA DE TALLER DE JORGE
+    const INITIAL_TICKETS = [
+      {
+        id: "T-101",
+        folio: "#CF-9021",
+        sucursal: "Caffenio Blvd. Morelos",
+        zona: "Norte",
+        area: "MAQUINA_CAFE",
+        areaLabel: "Espresso La Marzocco",
+        icon: "coffee",
+        stage: "COL_REPARACION", // En Reparación Activa: La refacción YA LLEGÓ y el técnico está trabajando
+        prioridad: "ALTA",
+        titulo: "Baja presión en vaporizador y grupo 2 frío",
+        descripcion: "La máquina de espresso principal perdió presión en el vaporizador durante la hora pico de la mañana. No está espumando la leche para lattes ni capuchinos.",
+        necesitaRefaccion: true,
+        refaccionEstado: "Recibida (Técnico la trae en mano)",
+        refacciones: [
+          { nombre: "Válvula de sobrepresión 1/2\"", estatus: "Recibida", sku: "REF-LM-084" },
+          { nombre: "Junta de teflón para grupo", estatus: "Recibida", sku: "REF-JT-012" }
+        ],
+        tecnico: "Carlos Morales",
+        tiempoHoras: 3.5,
+        bitacora: [
+          { hora: "Hoy 14:20 • Técnico", texto: "Pieza entregada por almacén. Desmontando electroválvula del grupo 2 para sustitución." },
+          { hora: "Hoy 11:05 • Tienda", texto: "Gerente reporta goteo continuo y pérdida de presión en vaporizador." }
+        ]
+      },
+      {
+        id: "T-102",
+        folio: "#CF-9022",
+        sucursal: "Caffenio Luis Encinas (Unison)",
+        zona: "Centro",
+        area: "REFRIGERACION",
+        areaLabel: "Máquina de Hielo Scotsman",
+        icon: "snowflake",
+        stage: "COL_REFACCIONES", // En Espera de Refacción: Aquí sí está atorado
+        prioridad: "ALTA",
+        titulo: "Compresor se apaga por alarma de alta presión",
+        descripcion: "No está produciendo suficiente cubito de hielo para la línea de Kfreeze y bebidas frías. Tienen que pedir hielo de bolsa de emergencia a tienda contigua.",
+        necesitaRefaccion: true,
+        refaccionEstado: "En Tránsito desde Corporativo",
+        refacciones: [
+          { nombre: "Sensor termostato de deshielo", estatus: "En Tránsito Almacén", sku: "REF-SC-441" }
+        ],
+        tecnico: "Iván Romo",
+        tiempoHoras: 8.0,
+        bitacora: [
+          { hora: "Ayer 17:30 • Almacén", texto: "Se colocó pedido de sensor a proveedor. Tiempo estimado de entrega: 24 hrs." },
+          { hora: "Ayer 15:00 • Técnico", texto: "Diagnóstico: Sensor abierto marca -40°C en falso y corta refrigerante." }
+        ]
+      },
+      {
+        id: "T-103",
+        folio: "#CF-9023",
+        sucursal: "Caffenio Quiroga",
+        zona: "Poniente",
+        area: "PLOMERIA",
+        areaLabel: "Sistema de Filtración & Ósmosis",
+        icon: "droplet",
+        stage: "COL_PREVENTIVOS", // Mantenimiento Preventivo / Rutinario de póliza
+        prioridad: "MEDIA",
+        titulo: "Sustitución de cartuchos de carbón por horas de uso",
+        descripcion: "Mantenimiento preventivo programado cada 6 meses. Se cambian cartuchos de sedimentos y carbón activado para proteger calderas y garantizar sabor de café.",
+        necesitaRefaccion: true,
+        refaccionEstado: "Material de Consumo en Stock",
+        refacciones: [
+          { nombre: "Cartucho Sedimentos 5 micras", estatus: "Consumible en Almacén", sku: "FIL-OSM-05" },
+          { nombre: "Bloque de Carbón Activado", estatus: "Consumible en Almacén", sku: "FIL-OSM-CB" }
+        ],
+        tecnico: "Iván Romo",
+        tiempoHoras: 1.5,
+        bitacora: [
+          { hora: "Hoy 09:00 • Sistema", texto: "Folio generado automáticamente por ciclo de mantenimiento preventivo 180 días." }
+        ]
+      },
+      {
+        id: "T-104",
+        folio: "#CF-9024",
+        sucursal: "Caffenio Vado del Río",
+        zona: "Sur",
+        area: "ELECTRICIDAD",
+        areaLabel: "Circuito de Barra & Drive-Thru",
+        icon: "zap",
+        stage: "COL_PENDIENTES", // Pendiente de Visita: Apenas llegó y nadie ha ido
+        prioridad: "ALTA",
+        titulo: "Sensor de presencia de ventanilla auto-servicio inestable",
+        descripcion: "La campanilla de aviso en diadema de baristas no suena cuando un carro se posiciona en el menú exterior. Ocasiona retraso de hasta 3 minutos en toma de orden.",
+        necesitaRefaccion: false,
+        refaccionEstado: "Por definir en diagnóstico inicial",
+        refacciones: [],
+        tecnico: "Por Asignar",
+        tiempoHoras: 0.5,
+        bitacora: [
+          { hora: "Hoy 15:10 • Gerente Tienda", texto: "Ticket capturado desde portal de tienda. Reportan carros esperando sin ser atendidos." }
+        ]
+      },
+      {
+        id: "T-105",
+        folio: "#CF-9025",
+        sucursal: "Caffenio Solidaridad",
+        zona: "Norte",
+        area: "MAQUINA_CAFE",
+        areaLabel: "Molino Mahlkönig K30",
+        icon: "coffee",
+        stage: "COL_REFACCIONES", // Atorado por pieza
+        prioridad: "MEDIA",
+        titulo: "Muelas desgastadas, dosificación irregular",
+        descripcion: "El tiempo de molienda para shot doble pasó de 3.8s a 6.2s. Sobrecalienta el grano y quema el retrogusto del espresso.",
+        necesitaRefaccion: true,
+        refaccionEstado: "Falta aprobación de compra",
+        refacciones: [
+          { nombre: "Juego de Muelas Planas 65mm", estatus: "Pendiente de Surtir", sku: "REF-MK-65F" }
+        ],
+        tecnico: "Carlos Morales",
+        tiempoHoras: 12.0,
+        bitacora: [
+          { hora: "Ayer 12:00 • Técnico", texto: "Muelas con más de 800 kg de grano molido. Filo completamente plano. Requiere juego nuevo." }
+        ]
+      },
+      {
+        id: "T-106",
+        folio: "#CF-9026",
+        sucursal: "Caffenio Colosio",
+        zona: "Poniente",
+        area: "REFRIGERACION",
+        areaLabel: "Vitrina de Lácteos & Repostería",
+        icon: "snowflake",
+        stage: "COL_PRUEBAS", // Pruebas de calidad
+        prioridad: "BAJA",
+        titulo: "Monitoreo de curva de temperatura tras cambio de fan",
+        descripcion: "Se reemplazó el ventilador del evaporador. Se está monitoreando que la temperatura se mantenga estable entre 2°C y 4°C por 30 minutos continuos.",
+        necesitaRefaccion: false,
+        refaccionEstado: "Instalado satisfactoriamente",
+        refacciones: [],
+        tecnico: "Iván Romo",
+        tiempoHoras: 5.2,
+        bitacora: [
+          { hora: "Hoy 13:45 • Técnico", texto: "Equipo arrancó correctamente. Termómetro digital en 3.1°C constante." }
+        ]
+      },
+      {
+        id: "T-107",
+        folio: "#CF-9027",
+        sucursal: "Caffenio Progreso",
+        zona: "Norte",
+        area: "PLOMERIA",
+        areaLabel: "Tarja de Barra & Sifón",
+        icon: "droplet",
+        stage: "COL_REPARACION", // Reparación Activa que NO ocupa refacción (solo mano de obra y herramienta)
+        prioridad: "MEDIA",
+        titulo: "Desazolve de trampa de drenaje y ajuste de empaque",
+        descripcion: "Acumulación de sedimentos de leche y borra de café en la trampa secundaria. El técnico está limpiando con sonda en sitio.",
+        necesitaRefaccion: false,
+        refaccionEstado: "Solo Mano de Obra / Ajuste Mecánico",
+        refacciones: [],
+        tecnico: "Luis Gaxiola",
+        tiempoHoras: 1.8,
+        bitacora: [
+          { hora: "Hoy 14:00 • Técnico", texto: "Desarmando codo de desagüe. No requiere refacción nueva, solo limpieza y ajuste con teflón." }
+        ]
+      }
+    ];
+
+    let tickets = [...INITIAL_TICKETS];
+    let activeCategory = 'ALL';
+    let searchQuery = '';
+    let selectedTicket = null;
+    let draggedTicketId = null;
+
+    function renderBoard() {
+      const columns = ['COL_PENDIENTES', 'COL_REFACCIONES', 'COL_PREVENTIVOS', 'COL_REPARACION', 'COL_PRUEBAS', 'COL_CONCLUIDO'];
+      
+      columns.forEach(colId => {
+        const el = document.getElementById(colId);
+        if (el) el.innerHTML = '';
+      });
+
+      const filtered = tickets.filter(t => {
+        const matchesCategory = activeCategory === 'ALL' || t.area === activeCategory;
+        const matchesSearch = searchQuery === '' || 
+          t.sucursal.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          t.folio.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          t.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          t.tecnico.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesCategory && matchesSearch;
+      });
+
+      const counts = { COL_PENDIENTES: 0, COL_REFACCIONES: 0, COL_PREVENTIVOS: 0, COL_REPARACION: 0, COL_PRUEBAS: 0, COL_CONCLUIDO: 0 };
+
+      filtered.forEach(ticket => {
+        if (counts[ticket.stage] !== undefined) {
+          counts[ticket.stage]++;
+        }
+
+        const colEl = document.getElementById(ticket.stage);
+        if (!colEl) return;
+
+        const card = createCardElement(ticket);
+        colEl.appendChild(card);
+      });
+
+      columns.forEach(colId => {
+        const badge = document.getElementById(`badge-${colId}`);
+        if (badge) badge.innerText = counts[colId];
+      });
+
+      const activeCount = tickets.filter(t => t.stage !== 'COL_CONCLUIDO').length;
+      document.getElementById('totalActiveCount').innerText = activeCount;
+
+      const criticalCount = tickets.filter(t => t.prioridad === 'ALTA' && t.stage !== 'COL_CONCLUIDO').length;
+      const critEl = document.getElementById('totalCriticalCount');
+      if (critEl) critEl.innerText = criticalCount;
+
+      const waitingPartsCount = tickets.filter(t => t.stage === 'COL_REFACCIONES').length;
+      const partsEl = document.getElementById('totalPartsWaiting');
+      if (partsEl) partsEl.innerText = waitingPartsCount;
+
+      lucide.createIcons();
+    }
+
+    function createCardElement(ticket) {
+      const card = document.createElement('div');
+      card.className = "card-drag bg-white rounded-xl p-3.5 border border-slate-200/90 shadow-2xs cursor-grab active:cursor-grabbing hover:border-slate-300 relative group";
+      card.draggable = true;
+      card.dataset.id = ticket.id;
+
+      let priorityBadge = '';
+      if (ticket.prioridad === 'ALTA') {
+        priorityBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200/80 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>Paro de Barra</span>`;
+      } else if (ticket.prioridad === 'MEDIA') {
+        priorityBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/80">Operación Lenta</span>`;
+      } else {
+        priorityBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">Preventivo</span>`;
+      }
+
+      // Distinción visual clara de piezas
+      let tagPieza = '';
+      if (ticket.stage === 'COL_REFACCIONES') {
+        tagPieza = `<div class="mt-2.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-medium flex items-center gap-1.5">
+          <i data-lucide="package-search" class="w-3.5 h-3.5 text-amber-600"></i>
+          <span class="truncate">Falta: ${ticket.refacciones[0].nombre}</span>
+        </div>`;
+      } else if (ticket.stage === 'COL_REPARACION' && ticket.necesitaRefaccion) {
+        tagPieza = `<div class="mt-2.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-medium flex items-center gap-1.5">
+          <i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-600"></i>
+          <span class="truncate">Pieza física en sitio</span>
+        </div>`;
+      } else if (ticket.stage === 'COL_REPARACION' && !ticket.necesitaRefaccion) {
+        tagPieza = `<div class="mt-2.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 text-[11px] font-medium flex items-center gap-1.5">
+          <i data-lucide="wrench" class="w-3.5 h-3.5 text-blue-600"></i>
+          <span class="truncate">Ajuste mecánico sin refacción</span>
+        </div>`;
+      }
+
+      card.innerHTML = `
+        <div class="flex items-center justify-between gap-2 mb-1.5">
+          <span class="font-mono text-[11px] font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">${ticket.folio}</span>
+          ${priorityBadge}
+        </div>
+
+        <div class="mb-1">
+          <h4 class="text-xs font-bold text-slate-900 group-hover:text-orange-600 transition-colors flex items-center gap-1">
+            <i data-lucide="map-pin" class="w-3 h-3 text-slate-400 shrink-0"></i>
+            <span class="truncate">${ticket.sucursal}</span>
+          </h4>
+          <p class="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
+            <i data-lucide="${ticket.icon}" class="w-3 h-3 text-orange-600 shrink-0"></i>
+            <span class="truncate">${ticket.areaLabel}</span>
+          </p>
+        </div>
+
+        <p class="text-xs text-slate-600 font-normal line-clamp-2 mt-1.5 leading-snug">
+          ${ticket.titulo}
+        </p>
+
+        ${tagPieza}
+
+        <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+          <div class="flex items-center gap-1.5 font-medium text-slate-600">
+            <div class="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-700">
+              ${ticket.tecnico.split(' ').map(n=>n[0]).join('')}
+            </div>
+            <span class="truncate max-w-[105px]">${ticket.tecnico}</span>
+          </div>
+          <span class="font-mono flex items-center gap-1">
+            <i data-lucide="clock" class="w-3 h-3 text-slate-400"></i> ${ticket.tiempoHoras}h
+          </span>
+        </div>
+      `;
+
+      card.addEventListener('dragstart', (e) => {
+        draggedTicketId = ticket.id;
+        card.classList.add('dragging');
+        e.dataTransfer.setData('text/plain', ticket.id);
+      });
+
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+        draggedTicketId = null;
+      });
+
+      card.addEventListener('click', () => {
+        openTicketModal(ticket.id);
+      });
+
+      return card;
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      const col = e.currentTarget;
+      col.classList.add('drag-over');
+    }
+
+    function handleDragLeave(e) {
+      const col = e.currentTarget;
+      col.classList.remove('drag-over');
+    }
+
+    function handleDrop(e, targetStage) {
+      e.preventDefault();
+      const col = e.currentTarget;
+      col.classList.remove('drag-over');
+
+      if (!draggedTicketId) return;
+
+      const ticket = tickets.find(t => t.id === draggedTicketId);
+      if (ticket && ticket.stage !== targetStage) {
+        ticket.stage = targetStage;
+        renderBoard();
+      }
+    }
+
+    function filterCategory(cat) {
+      activeCategory = cat;
+      const buttons = ['ALL', 'MAQUINA_CAFE', 'REFRIGERACION', 'PLOMERIA', 'ELECTRICIDAD'];
+      buttons.forEach(b => {
+        const btn = document.getElementById(`filter-btn-${b}`);
+        if (!btn) return;
+        if (b === cat) {
+          btn.className = "px-2.5 py-1 rounded-md font-semibold bg-slate-900 text-white shadow-xs transition-all";
+        } else {
+          btn.className = "px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-slate-100 transition-all flex items-center gap-1.5";
+        }
+      });
+      renderBoard();
+    }
+
+    function handleSearch(val) {
+      searchQuery = val;
+      renderBoard();
+    }
+
+    function openTicketModal(ticketId) {
+      const ticket = tickets.find(t => t.id === ticketId);
+      if (!ticket) return;
+      selectedTicket = ticket;
+
+      document.getElementById('modalFolioBadge').innerText = ticket.folio;
+      document.getElementById('modalSucursalTitle').innerText = ticket.sucursal;
+      document.getElementById('modalCategorySub').innerText = `${ticket.areaLabel} • Zona ${ticket.zona}`;
+      document.getElementById('modalDesc').innerText = ticket.descripcion;
+      document.getElementById('modalTechBadge').innerText = ticket.tecnico;
+      document.getElementById('modalTimeCount').innerText = `${ticket.tiempoHoras} hrs`;
+      
+      const stageMap = {
+        COL_PENDIENTES: "Pendiente de Visita Inicial",
+        COL_REFACCIONES: "Esperando Refacción (Atorado)",
+        COL_PREVENTIVOS: "Mantenimiento Preventivo de Rutina",
+        COL_REPARACION: "Reparación Activa en Sitio",
+        COL_PRUEBAS: "En Pruebas & Calibración de Bebida",
+        COL_CONCLUIDO: "Resuelto y Operando"
+      };
+      document.getElementById('modalStageBadge').innerText = stageMap[ticket.stage] || ticket.stage;
+
+      // Refacciones list
+      const refListEl = document.getElementById('modalRefList');
+      const refStatusEl = document.getElementById('modalRefStatus');
+      refListEl.innerHTML = '';
+      refStatusEl.innerText = ticket.refaccionEstado;
+
+      if (ticket.refacciones && ticket.refacciones.length > 0) {
+        ticket.refacciones.forEach(r => {
+          const row = document.createElement('div');
+          row.className = "p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between text-xs";
+          row.innerHTML = `
+            <div class="flex items-center gap-2">
+              <i data-lucide="package" class="w-4 h-4 text-orange-600"></i>
+              <span class="font-medium text-slate-800">${r.nombre}</span>
+              <span class="text-[10px] font-mono text-slate-400">(${r.sku})</span>
+            </div>
+            <span class="px-2 py-0.5 rounded font-semibold text-[10px] ${r.estatus.includes('Recibida') || r.estatus.includes('Instalado') || r.estatus.includes('Consumible') ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}">${r.estatus}</span>
+          `;
+          refListEl.appendChild(row);
+        });
+      } else {
+        refListEl.innerHTML = `<div class="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600 flex items-center gap-2">
+          <i data-lucide="info" class="w-4 h-4 text-slate-400"></i>
+          <span>Este folio se resuelve mediante calibración, limpieza profunda o mano de obra técnica directa (sin compra de pieza).</span>
+        </div>`;
+      }
+
+      // Bitacora Timeline
+      const timelineEl = document.getElementById('modalTimeline');
+      timelineEl.innerHTML = '';
+      if (ticket.bitacora && ticket.bitacora.length > 0) {
+        ticket.bitacora.forEach((b, index) => {
+          const item = document.createElement('div');
+          item.className = "p-3 flex items-start gap-3 bg-white";
+          item.innerHTML = `
+            <div class="w-2 h-2 rounded-full ${index === 0 ? 'bg-orange-500' : 'bg-slate-300'} mt-1.5 shrink-0"></div>
+            <div>
+              <span class="text-[11px] text-slate-400 font-mono">${b.hora}</span>
+              <p class="text-slate-700 font-medium mt-0.5">${b.texto}</p>
+            </div>
+          `;
+          timelineEl.appendChild(item);
+        });
+      }
+
+      document.getElementById('detailModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeModal() {
+      document.getElementById('detailModal').classList.add('hidden');
+      selectedTicket = null;
+    }
+
+    function markAsResolvedFromModal() {
+      if (selectedTicket) {
+        selectedTicket.stage = 'COL_CONCLUIDO';
+        renderBoard();
+        closeModal();
+      }
+    }
+
+    function openPlanModal() {
+      document.getElementById('planModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closePlanModal() {
+      document.getElementById('planModal').classList.add('hidden');
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+        closePlanModal();
+      }
+    });
+
+    document.getElementById('detailModal').addEventListener('click', (e) => {
+      if (e.target.id === 'detailModal') closeModal();
+    });
+    document.getElementById('planModal').addEventListener('click', (e) => {
+      if (e.target.id === 'planModal') closePlanModal();
+    });
+
+    renderBoard();
+  </script>
+</body>
+</html>
